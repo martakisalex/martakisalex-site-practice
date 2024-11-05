@@ -59,7 +59,11 @@ jobs:
     - name: Push tags only
       if: env.changed == 'true'
       run: |
-        git push origin "v${{ env.NEW_VERSION }}"
+        if git ls-remote --tags origin | grep -q "refs/tags/v${{ env.NEW_VERSION }}"; then
+          echo "Tag v${{ env.NEW_VERSION }} already exists on remote. Skipping push."
+        else
+          git push origin "v${{ env.NEW_VERSION }}"
+        fi
 
     - name: Create a pull request for develop branch
       if: env.changed == 'true' && env.type == 'prerelease'
