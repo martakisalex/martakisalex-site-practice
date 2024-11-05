@@ -1,4 +1,3 @@
-
 name: Version Check
 
 on:
@@ -15,12 +14,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
         with:
-          fetch-depth: 2  # Fetches enough history for the diff command
+          fetch-depth: 0  # Fetch full history for accurate diff detection
 
       - name: Check for package.json and package-lock.json changes
         run: |
-          PACKAGE_CHANGED=$(git diff --name-only HEAD~1 HEAD | grep -q "package.json" && echo "true" || echo "false")
-          LOCK_CHANGED=$(git diff --name-only HEAD~1 HEAD | grep -q "package-lock.json" && echo "true" || echo "false")
+          BASE_BRANCH=$(echo "${{ github.base_ref }}")
+          PACKAGE_CHANGED=$(git diff --name-only origin/$BASE_BRANCH HEAD | grep -q "package.json" && echo "true" || echo "false")
+          LOCK_CHANGED=$(git diff --name-only origin/$BASE_BRANCH HEAD | grep -q "package-lock.json" && echo "true" || echo "false")
 
           if [ "$PACKAGE_CHANGED" = "true" ] && [ "$LOCK_CHANGED" = "false" ]; then
             echo "Error: package-lock.json must be updated whenever package.json is modified." && exit 1
