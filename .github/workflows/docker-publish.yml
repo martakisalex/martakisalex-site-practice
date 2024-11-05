@@ -59,6 +59,9 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Capture Digest
+        run: echo "DIGEST=${{ steps.build.outputs.digest }}" >> $GITHUB_ENV
+
       - name: Push Docker image (for main branch only)
         if: github.ref_name == 'main'
         uses: docker/build-push-action@v4
@@ -89,5 +92,5 @@ jobs:
         uses: actions/attest-build-provenance@v1
         with:
           subject-name: "ghcr.io/${{ github.repository }}:${{ env.VERSION }}"
-          subject-digest: ${{ steps.build.outputs.digest }}
+          subject-digest: ${{ env.DIGEST }}
           push-to-registry: true
