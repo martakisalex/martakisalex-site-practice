@@ -39,7 +39,18 @@ jobs:
           git config --local user.email "actions@github.com"
           git config --local user.name "GitHub Actions"
 
+      - name: Check for Existing Version Bump
+        id: check_bump
+        run: |
+          # Check if the latest commit contains "chore: bump version"
+          if git log -1 --pretty=%B | grep -q "chore: bump version"; then
+            echo "SKIP_BUMP=true" >> $GITHUB_ENV
+          else
+            echo "SKIP_BUMP=false" >> $GITHUB_ENV
+          fi
+
       - name: Bump Version in package.json
+        if: env.SKIP_BUMP == 'false'
         run: |
           # Bump the version in package.json based on the bump type
           npm version ${{ env.BUMP_TYPE }} --no-git-tag-version
