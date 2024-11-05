@@ -11,74 +11,74 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Check out the repository
-      uses: actions/checkout@v4
+      - name: Check out the repository
+        uses: actions/checkout@v4
 
-    - name: Set up Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: '20'
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
 
-    - name: Install dependencies
-      run: npm install
+      - name: Install dependencies
+        run: npm install
 
-    - name: Configure Git identity
-      run: |
-        git config --global user.name "github-actions[bot]"
-        git config --global user.email "github-actions[bot]@users.noreply.github.com"
+      - name: Configure Git identity
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-    - name: Determine release type
-      id: version
-      run: |
-        if [ "${{ github.ref }}" = "refs/heads/develop" ]; then
-          echo "type=prerelease" >> $GITHUB_ENV
-        else
-          echo "type=release" >> $GITHUB_ENV
-        fi
+      - name: Determine release type
+        id: version
+        run: |
+          if [ "${{ github.ref }}" = "refs/heads/develop" ]; then
+            echo "type=prerelease" >> $GITHUB_ENV
+          else
+            echo "type=release" >> $GITHUB_ENV
+          fi
 
-    - name: Run standard-version for beta (develop branch)
-      if: env.type == 'prerelease'
-      id: prerelease
-      run: |
-        CURRENT_VERSION=$(node -p "require('./package.json').version")
-        npm run prerelease
-        NEW_VERSION=$(node -p "require('./package.json').version")
-        echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
-        echo "changed=$( [ \"$CURRENT_VERSION\" != \"$NEW_VERSION\" ] && echo true || echo false )" >> $GITHUB_ENV
+      - name: Run standard-version for beta (develop branch)
+        if: env.type == 'prerelease'
+        id: prerelease
+        run: |
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          npm run prerelease
+          NEW_VERSION=$(node -p "require('./package.json').version")
+          echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
+          echo "changed=$( [ \"$CURRENT_VERSION\" != \"$NEW_VERSION\" ] && echo true || echo false )" >> $GITHUB_ENV
 
-    - name: Run standard-version for release (main branch)
-      if: env.type == 'release'
-      id: release
-      run: |
-        CURRENT_VERSION=$(node -p "require('./package.json').version")
-        npm run release
-        NEW_VERSION=$(node -p "require('./package.json').version")
-        echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
-        echo "changed=$( [ \"$CURRENT_VERSION\" != \"$NEW_VERSION\" ] && echo true || echo false )" >> $GITHUB_ENV
+      - name: Run standard-version for release (main branch)
+        if: env.type == 'release'
+        id: release
+        run: |
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          npm run release
+          NEW_VERSION=$(node -p "require('./package.json').version")
+          echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
+          echo "changed=$( [ \"$CURRENT_VERSION\" != \"$NEW_VERSION\" ] && echo true || echo false )" >> $GITHUB_ENV
 
-    - name: Push tags only
-      if: env.changed == 'true'
-      run: |
-        if git ls-remote --tags origin | grep -q "refs/tags/v${{ env.NEW_VERSION }}"; then
-          echo "Tag v${{ env.NEW_VERSION }} already exists on remote. Skipping push."
-        else
-          git push origin "v${{ env.NEW_VERSION }}"
-        fi
+      - name: Push tags only
+        if: env.changed == 'true'
+        run: |
+          if git ls-remote --tags origin | grep -q "refs/tags/v${{ env.NEW_VERSION }}"; then
+            echo "Tag v${{ env.NEW_VERSION }} already exists on remote. Skipping push."
+          else
+            git push origin "v${{ env.NEW_VERSION }}"
+          fi
 
-    - name: Create a pull request for develop branch
-      if: env.changed == 'true' && env.type == 'prerelease'
-      uses: peter-evans/create-pull-request@v5
-      with:
-        branch: develop
-        commit-message: "chore(release): ${{ env.NEW_VERSION }}"
-        title: "chore(release): ${{ env.NEW_VERSION }}"
-        body: "Automated release for version ${{ env.NEW_VERSION }}"
-        labels: "automated release"
+      - name: Create a pull request for develop branch
+        if: env.changed == 'true' && env.type == 'prerelease'
+        uses: peter-evans/create-pull-request@v5
+        with:
+          branch: develop
+          commit-message: "chore(release): ${{ env.NEW_VERSION }}"
+          title: "chore(release): ${{ env.NEW_VERSION }}"
+          body: "Automated release for version ${{ env.NEW_VERSION }}"
+          labels: "automated release"
 
-    - name: Create Release
-      if: env.changed == 'true'
-      uses: softprops/action-gh-release@v1.0.0
-      with:
-        tag_name: "v${{ env.NEW_VERSION }}"
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create Release
+        if: env.changed == 'true'
+        uses: softprops/action-gh-release@v2.0.8
+        with:
+          tag_name: "v${{ env.NEW_VERSION }}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
