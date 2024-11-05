@@ -1,0 +1,58 @@
+name: Version Bump
+
+on:
+  push:
+    branches:
+      - develop
+      - main
+
+jobs:
+  version-bump:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Check out the repository
+      uses: actions/checkout@v2
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v2
+      with:
+        node-version: '16'
+
+    - name: Install dependencies
+      run: npm install
+
+    - name: Determine release type
+      id: version
+      run: echo "::set-output name=type::$(if [ ${{ github.ref }} = 'refs/heads/develop' ]; then echo prerelease; else echo release; fi)"
+
+    - name: Run standard-version for beta (develop branch)
+      if: steps.version.outputs.type == 'prerelease'
+      id: prerelease
+      run: |
+        CURRENT_VERSION=$(node -p "require('./package.json').version")
+        npm run prerelease
+        NEW_VERSION=$(node -p "require('./package.json').version")
+        echo "::set-output name=changed::$( [ \"$CURRENT_VERSION\" != \"$NEW_VERSION\" ] && echo true || echo false )"
+
+    - name: Run standard-version for release (main branch)
+      if: steps.version.outputs.type == 'release'
+      id: release
+      run: |
+        CURRENT_VERSION=$(node -p "require('./package.json').version")
+        npm run release
+        NEW_VERSION=$(node -p "require('./package.json').version")
+        echo "::set-output name=changed::$( [ \"$CURRENT_VERSION\" != \"$NEW_VERSION\" ] && echo true || echo false )"
+
+    - name: Push tags
+      if: steps.prerelease.outputs.changed == 'true' || steps.release.outputs.changed == 'true'
+      run: |
+        git push --follow-tags origin ${{ github.ref_name }}
+
+    - name: Create Release
+      if: steps.prerelease.outputs.changed == 'true' || steps.release.outputs.changed == 'true'
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: "v$(cat package.json | jq -r .version)"
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
