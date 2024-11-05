@@ -1,48 +1,46 @@
-name: Version Bump
+name: Version Bump and Tag
 
 on:
   push:
     branches:
-      - develop
-      - main
+      - 'feat:*'
+      - 'fix:*'
+      - 'major:*'
 
 jobs:
-  version-bump:
+  version_bump:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Check out the repository
-      uses: actions/checkout@v2
+      - name: Checkout code
+        uses: actions/checkout@v2
 
-    - name: Set up Node.js
-      uses: actions/setup-node@v2
-      with:
-        node-version: '16'
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '16'
 
-    - name: Install dependencies
-      run: npm install
+      - name: Install dependencies
+        run: npm install
 
-    - name: Configure Git identity
-      run: |
-        git config --global user.name "github-actions[bot]"
-        git config --global user.email "github-actions[bot]@users.noreply.github.com"
-    - name: Determine release type
-      id: version
-      run: echo "::set-output name=type::$(if [ ${{ github.ref }} = 'refs/heads/develop' ]; then echo prerelease; else echo release; fi)"
+      - name: Determine Version Bump Type
+        id: bump_type
+        run: |
+          if [[ "${GITHUB_REF##*/}" == feat:* ]]; then
+            echo "BUMP_TYPE=minor" >> $GITHUB_ENV
+          elif [[ "${GITHUB_REF##*/}" == fix:* ]]; then
+            echo "BUMP_TYPE=patch" >> $GITHUB_ENV
+          elif [[ "${GITHUB_REF##*/}" == major:* ]]; then
+            echo "BUMP_TYPE=major" >> $GITHUB_ENV
+          else
+            echo "BUMP_TYPE=patch" >> $GITHUB_ENV # default to patch if no prefix
 
-    - name: Run standard-version for beta (develop branch)
-      if: steps.version.outputs.type == 'prerelease'
-      id: prerelease
-      run: |
-        CURRENT_VERSION=$(node -p "require('./package.json').version")
-        npm run prerelease
-        NEW_VERSION=$(node -p "require('./package.json').version")
-        echo "::set-output name=changed::$( [ \"$CURRENT_VERSION\" != \"$NEW_VERSION\" ] && echo true || echo false )"
-    - name: Run standard-version for release (main branch)
-      if: steps.version.outputs.type == 'release'
-      id: release
-      run: |
-        CURRENT_VERSION=$(node -p "require('./package.json').version")
-        npm run release
-        NEW_VERSION=$(node -p "require('./package.json').version")
-        echo "::set-output name=cha
+      - name: Bump Version in package.json
+        run: |
+          npm version ${{ env.BUMP_TYPE }} --no-git-tag-version
+          VERSION=$(jq -r '.version' package.json)
+          git add package.json package-lock.json
+          git commit -m "Bump version to $VERSION"
+          git tag "v$VERSION"
+          git push origin HEAD --tags
+
