@@ -34,7 +34,7 @@ jobs:
         run: |
           VERSION=$(node -p "require('./package.json').version")
           # Add '-beta' to the version if on the 'develop' branch
-          if [ "${{ github.ref_name }}" == "develop" ]; then
+          if [ "${GITHUB_REF_NAME}" == "develop" ]; then
             VERSION="${VERSION}-beta"
           fi
           echo "VERSION=$VERSION" >> $GITHUB_ENV
