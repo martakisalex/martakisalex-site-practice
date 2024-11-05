@@ -42,8 +42,8 @@ jobs:
       - name: Check for Existing Version Bump
         id: check_bump
         run: |
-          # Check if the latest commit contains "chore: bump version"
-          if git log -1 --pretty=%B | grep -q "chore: bump version"; then
+          # Check for any prior "chore: bump version" commits in the branch history
+          if git log --pretty=%B | grep -q "chore: bump version"; then
             echo "SKIP_BUMP=true" >> $GITHUB_ENV
           else
             echo "SKIP_BUMP=false" >> $GITHUB_ENV
