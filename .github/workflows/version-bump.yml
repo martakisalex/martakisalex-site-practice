@@ -3,7 +3,7 @@ name: Version Bump and Tag
 on:
   pull_request:
     branches:
-      - 'develop'
+      - 'develop'  # Target branch for PRs (typically the main development branch)
 
 jobs:
   version_bump:
@@ -24,14 +24,15 @@ jobs:
       - name: Determine Version Bump Type
         id: bump_type
         run: |
-          if [[ "${GITHUB_REF##*/}" == feat:* ]]; then
+          if [[ "${{ github.head_ref }}" == feat:* ]]; then
             echo "BUMP_TYPE=minor" >> $GITHUB_ENV
-          elif [[ "${GITHUB_REF##*/}" == fix:* ]]; then
+          elif [[ "${{ github.head_ref }}" == fix:* ]]; then
             echo "BUMP_TYPE=patch" >> $GITHUB_ENV
-          elif [[ "${GITHUB_REF##*/}" == major:* ]]; then
+          elif [[ "${{ github.head_ref }}" == major:* ]]; then
             echo "BUMP_TYPE=major" >> $GITHUB_ENV
           else
             echo "BUMP_TYPE=patch" >> $GITHUB_ENV # default to patch if no prefix
+          fi
 
       - name: Bump Version in package.json
         run: |
@@ -39,6 +40,4 @@ jobs:
           VERSION=$(jq -r '.version' package.json)
           git add package.json package-lock.json
           git commit -m "Bump version to $VERSION"
-          git tag "v$VERSION"
-          git push origin HEAD --tags
-
+          git push origin HEAD  # Pushes changes back to the PR branch
