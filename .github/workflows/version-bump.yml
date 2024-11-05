@@ -41,8 +41,16 @@ jobs:
 
       - name: Bump Version in package.json
         run: |
+          # Bump the version in package.json based on the bump type
           npm version ${{ env.BUMP_TYPE }} --no-git-tag-version
           VERSION=$(jq -r '.version' package.json)
+          
+          # Commit the version bump changes
           git add package.json package-lock.json
           git commit -m "Bump version to $VERSION"
-          git push origin "HEAD:${{ github.head_ref }}"  # Pushes changes back to the PR branch
+          
+          # Pull any remote changes on the PR branch to prevent conflicts
+          git pull origin "${{ github.head_ref }}" --rebase
+          
+          # Push the updated version back to the PR branch
+          git push origin "HEAD:${{ github.head_ref }}"
