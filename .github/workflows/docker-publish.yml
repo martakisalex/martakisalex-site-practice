@@ -56,7 +56,7 @@ jobs:
           push: true
           tags: |
             ghcr.io/${{ github.repository }}:${{ env.VERSION }}
-            ghcr.io/${{ github.repository }}:latest
+            ${{ github.ref_name == 'main' && 'ghcr.io/${{ github.repository }}:latest' || '' }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
