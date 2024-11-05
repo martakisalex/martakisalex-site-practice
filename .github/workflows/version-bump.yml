@@ -34,7 +34,7 @@ jobs:
           echo "type=prerelease" >> $GITHUB_ENV
         else
           echo "type=release" >> $GITHUB_ENV
-      # Now using ${{ env.type }} for conditional steps
+        fi
 
     - name: Run standard-version for beta (develop branch)
       if: env.type == 'prerelease'
@@ -43,6 +43,7 @@ jobs:
         CURRENT_VERSION=$(node -p "require('./package.json').version")
         npm run prerelease
         NEW_VERSION=$(node -p "require('./package.json').version")
+        echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
         echo "changed=$( [ \"$CURRENT_VERSION\" != \"$NEW_VERSION\" ] && echo true || echo false )" >> $GITHUB_ENV
 
     - name: Run standard-version for release (main branch)
@@ -52,12 +53,13 @@ jobs:
         CURRENT_VERSION=$(node -p "require('./package.json').version")
         npm run release
         NEW_VERSION=$(node -p "require('./package.json').version")
+        echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
         echo "changed=$( [ \"$CURRENT_VERSION\" != \"$NEW_VERSION\" ] && echo true || echo false )" >> $GITHUB_ENV
 
     - name: Push tags only
       if: env.changed == 'true'
       run: |
-        git push origin "v$(cat package.json | jq -r .version)"
+        git push origin "v${{ env.NEW_VERSION }}"
 
     - name: Create a pull request for develop branch
       if: env.changed == 'true' && env.type == 'prerelease'
@@ -73,6 +75,6 @@ jobs:
       if: env.changed == 'true'
       uses: softprops/action-gh-release@v1
       with:
-        tag_name: "v$(cat package.json | jq -r .version)"
+        tag_name: "v${{ env.NEW_VERSION }}"
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
