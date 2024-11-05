@@ -47,7 +47,7 @@ jobs:
           
           # Commit the version bump changes
           git add package.json package-lock.json
-          git commit -m "Bump version to $VERSION"
+          git commit -m "chore: bump version to $VERSION"
           
           # Pull any remote changes on the PR branch to prevent conflicts
           git pull origin "${{ github.head_ref }}" --rebase
