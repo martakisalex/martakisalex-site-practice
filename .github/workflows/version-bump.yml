@@ -3,9 +3,7 @@ name: Version Bump and Tag
 on:
   pull_request:
     branches:
-      - 'feat:*'
-      - 'fix:*'
-      - 'major:*'
+      - 'develop'
 
 jobs:
   version_bump:
