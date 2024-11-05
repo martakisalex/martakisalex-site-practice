@@ -1,67 +1,38 @@
-name: Version Bump and Tag
+name: Version Bump
 
 on:
-  pull_request:
+  push:
     branches:
-      - 'develop'  # Target branch for PRs
+      - develop  # Change this if you want it on a different branch
 
 jobs:
-  version_bump:
+  bump-version:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+        uses: actions/checkout@v3
 
       - name: Set up Node.js
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v3
         with:
           node-version: '16'
 
       - name: Install dependencies
         run: npm install
 
-      - name: Determine Version Bump Type
-        id: bump_type
+      - name: Bump minor version
         run: |
-          BRANCH_NAME="${{ github.head_ref }}"
-          if [[ "$BRANCH_NAME" == feat/* ]]; then
-            echo "BUMP_TYPE=minor" >> $GITHUB_ENV
-          elif [[ "$BRANCH_NAME" == fix/* ]]; then
-            echo "BUMP_TYPE=patch" >> $GITHUB_ENV
-          elif [[ "$BRANCH_NAME" == major/* ]]; then
-            echo "BUMP_TYPE=major" >> $GITHUB_ENV
-          else
-            echo "BUMP_TYPE=patch" >> $GITHUB_ENV # default to patch if no prefix
-          fi
-
-      - name: Configure Git User
+          node -e "let pkg = require('./package.json'); pkg.version = pkg.version.replace(/(\d+)\.(\d+)\.(\d+)/, (_, major, minor, patch) => \`\${major}.\${+minor + 1}.0\`); require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2));"
+          
+      - name: Commit version bump
         run: |
-          git config --local user.email "actions@github.com"
-          git config --local user.name "GitHub Actions"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add package.json
+          git commit -m "chore: bump minor version"
 
-      - name: Bump Version in package.json
-        run: |
-          npm version ${{ env.BUMP_TYPE }} --no-git-tag-version
-          VERSION=$(jq -r '.version' package.json)
-          git add package.json package-lock.json
-          git commit -m "chore: bump version to $VERSION"
-
-      - name: Create New Branch for Version Bump
-        run: |
-          NEW_BRANCH="version-bump-$VERSION"
-          git checkout -b "$NEW_BRANCH"
-          git push origin "$NEW_BRANCH"
-
-      - name: Create Pull Request
+      - name: Push changes
+        run: git push origin HEAD
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          PR_TITLE="chore: bump version to $VERSION"
-          PR_BODY="This PR bumps the version to $VERSION as per the versioning strategy."
-          curl -s -X POST -H "Authorization: token $GITHUB_TOKEN" \
-            -H "Accept: application/vnd.github.v3+json" \
-            https://api.github.com/repos/${{ github.repository }}/pulls \
-            -d "{\"title\":\"$PR_TITLE\",\"head\":\"$NEW_BRANCH\",\"base\":\"develop\",\"body\":\"$PR_BODY\"}"
