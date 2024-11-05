@@ -13,7 +13,6 @@ jobs:
     permissions:
       contents: read
       packages: write
-      attestations: write
       id-token: write
 
     steps:
@@ -37,35 +36,13 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "::set-output name=VERSION::$VERSION"
 
-      - name: Debug Version
-        run: echo "VERSION=$VERSION"
-
-      - name: Extract metadata (tags, labels) for Docker
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/martakisalex/martakisalex-site-practice
-          tags: |
-            ${{ steps.version.outputs.VERSION }}
-            latest
-
       - name: Build and push Docker image
-        id: push
         uses: docker/build-push-action@v4
         with:
           context: .
           push: true
           tags: |
-            ghcr.io/martakisalex/martakisalex-site-practice:${{ steps.version.outputs.VERSION }}
             ghcr.io/martakisalex/martakisalex-site-practice:latest
-          labels: ${{ steps.meta.outputs.labels }}
+            ghcr.io/martakisalex/martakisalex-site-practice:${{ steps.version.outputs.VERSION }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
-      - name: Generate artifact attestation
-        if: github.ref_name == 'main'
-        uses: actions/attest-build-provenance@v1
-        with:
-          subject-name: "ghcr.io/martakisalex/martakisalex-site-practice:${{ steps.version.outputs.VERSION }}"
-          subject-digest: ${{ steps.push.outputs.digest }}
-          push-to-registry: true
