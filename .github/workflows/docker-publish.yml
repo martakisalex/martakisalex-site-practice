@@ -43,7 +43,7 @@ jobs:
           images: ghcr.io/${{ github.repository }}
           tags: |
             ${{ env.VERSION }}${{ github.ref_name == 'develop' && '-develop' || '' }}
-            latest
+            ${{ github.ref_name == 'main' && 'latest' || '' }}
 
       - name: Build and push Docker image
         id: push
@@ -53,7 +53,7 @@ jobs:
           push: true
           tags: |
             ghcr.io/${{ github.repository }}:${{ env.VERSION }}${{ github.ref_name == 'develop' && '-develop' || '' }}
-            ghcr.io/${{ github.repository }}:latest
+            ${{ github.ref_name == 'main' && 'ghcr.io/${{ github.repository }}:latest' || '' }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
