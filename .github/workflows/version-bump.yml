@@ -21,7 +21,22 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Check for Version Bump Label
+        id: check_label
+        run: |
+          # Check if the PR has a 'version-bumped' label
+          LABELS=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/labels | jq -r '.[].name')
+
+          if echo "$LABELS" | grep -q "version-bumped"; then
+            echo "SKIP_BUMP=true" >> $GITHUB_ENV
+          else
+            echo "SKIP_BUMP=false" >> $GITHUB_ENV
+          fi
+
       - name: Determine Version Bump Type
+        if: env.SKIP_BUMP == 'false'
         id: bump_type
         run: |
           if [[ "${{ github.head_ref }}" == feat:* ]]; then
@@ -35,19 +50,10 @@ jobs:
           fi
 
       - name: Configure Git User
+        if: env.SKIP_BUMP == 'false'
         run: |
           git config --local user.email "actions@github.com"
           git config --local user.name "GitHub Actions"
-
-      - name: Check for Existing Version Bump
-        id: check_bump
-        run: |
-          # Check for any prior "chore: bump version" commits in the branch history
-          if git log --pretty=%B | grep -q "chore: bump version"; then
-            echo "SKIP_BUMP=true" >> $GITHUB_ENV
-          else
-            echo "SKIP_BUMP=false" >> $GITHUB_ENV
-          fi
 
       - name: Bump Version in package.json
         if: env.SKIP_BUMP == 'false'
@@ -65,3 +71,12 @@ jobs:
           
           # Push the updated version back to the PR branch
           git push origin "HEAD:${{ github.head_ref }}"
+
+      - name: Add Version Bumped Label
+        if: env.SKIP_BUMP == 'false'
+        run: |
+          # Add the 'version-bumped' label to the PR to prevent repeat bumps
+          curl -s -X POST -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/labels \
+            -d '{"labels":["version-bumped"]}'
