@@ -1,10 +1,11 @@
-name: Version Bump on Feature Branches
+name: Version Bump and Tag
 
 on:
   push:
-    branches-ignore:
-      - main
-      - develop
+    branches:
+      - 'feat:*'
+      - 'fix:*'
+      - 'major:*'
 
 jobs:
   version_bump:
@@ -22,47 +23,24 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Determine Version Suffix
-        id: version_suffix
-        run: |
-          # Check if merging to develop; if so, add -beta suffix
-          if [[ "${{ github.ref }}" == "refs/heads/develop" ]]; then
-            # Extract the current version number from package.json
-            VERSION=$(jq -r '.version' package.json | sed 's/-beta.*//')
-            # Get latest beta version by counting existing beta tags
-            LATEST_BETA=$(git tag --list "${VERSION}-beta.*" | wc -l)
-            # Increment beta version
-            echo "VERSION_SUFFIX=-beta.$((LATEST_BETA + 1))" >> $GITHUB_ENV
-          else
-            echo "VERSION_SUFFIX=" >> $GITHUB_ENV
-          fi
-
       - name: Determine Version Bump Type
         id: bump_type
         run: |
-          # Determine version bump type based on branch name
-          if [[ "${GITHUB_REF##*/}" == major:* ]]; then
-            echo "BUMP_TYPE=major" >> $GITHUB_ENV
-          elif [[ "${GITHUB_REF##*/}" == feat:* ]]; then
+          if [[ "${GITHUB_REF##*/}" == feat:* ]]; then
             echo "BUMP_TYPE=minor" >> $GITHUB_ENV
           elif [[ "${GITHUB_REF##*/}" == fix:* ]]; then
             echo "BUMP_TYPE=patch" >> $GITHUB_ENV
+          elif [[ "${GITHUB_REF##*/}" == major:* ]]; then
+            echo "BUMP_TYPE=major" >> $GITHUB_ENV
           else
-            echo "BUMP_TYPE=patch" >> $GITHUB_ENV # default to patch if no specific prefix
-          fi
+            echo "BUMP_TYPE=patch" >> $GITHUB_ENV # default to patch if no prefix
 
-      - name: Bump Version with Suffix
-        if: startsWith(github.ref, 'refs/heads/feature/')
+      - name: Bump Version in package.json
         run: |
-          # Apply version bump with beta suffix if defined
           npm version ${{ env.BUMP_TYPE }} --no-git-tag-version
           VERSION=$(jq -r '.version' package.json)
-          UPDATED_VERSION="${VERSION}${{ env.VERSION_SUFFIX }}"
-          # Update package.json with the new version
-          jq ".version = \"$UPDATED_VERSION\"" package.json > tmp.$$.json && mv tmp.$$.json package.json
           git add package.json package-lock.json
-          git commit -m "Bump version to ${UPDATED_VERSION}"
-          git push origin HEAD
+          git commit -m "Bump version to $VERSION"
+          git tag "v$VERSION"
+          git push origin HEAD --tags
 
-      - name: Build and Test
-        run: npm run build && npm test
