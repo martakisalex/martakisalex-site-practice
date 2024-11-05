@@ -12,12 +12,12 @@ jobs:
 
     steps:
     - name: Check out the repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4  # Updated to the latest version
 
     - name: Set up Node.js
-      uses: actions/setup-node@v2
+      uses: actions/setup-node@v3  # Updated to the latest version
       with:
-        node-version: '16'
+        node-version: '20'
 
     - name: Install dependencies
       run: npm install
@@ -29,22 +29,50 @@ jobs:
 
     - name: Determine release type
       id: version
-      run: echo "::set-output name=type::$(if [ ${{ github.ref }} = 'refs/heads/develop' ]; then echo prerelease; else echo release; fi)"
+      run: |
+        if [ "${{ github.ref }}" = "refs/heads/develop" ]; then
+          echo "type=prerelease" >> $GITHUB_ENV
+        else
+          echo "type=release" >> $GITHUB_ENV
+      # Now using ${{ env.type }} for conditional steps
 
     - name: Run standard-version for beta (develop branch)
-      if: steps.version.outputs.type == 'prerelease'
+      if: env.type == 'prerelease'
       id: prerelease
       run: |
         CURRENT_VERSION=$(node -p "require('./package.json').version")
         npm run prerelease
         NEW_VERSION=$(node -p "require('./package.json').version")
-        echo "::set-output name=changed::$( [ \"$CURRENT_VERSION\" != \"$NEW_VERSION\" ] && echo true || echo false )"
+        echo "changed=$( [ \"$CURRENT_VERSION\" != \"$NEW_VERSION\" ] && echo true || echo false )" >> $GITHUB_ENV
 
     - name: Run standard-version for release (main branch)
-      if: steps.version.outputs.type == 'release'
+      if: env.type == 'release'
       id: release
       run: |
         CURRENT_VERSION=$(node -p "require('./package.json').version")
         npm run release
         NEW_VERSION=$(node -p "require('./package.json').version")
-        echo "::set-output name=cha
+        echo "changed=$( [ \"$CURRENT_VERSION\" != \"$NEW_VERSION\" ] && echo true || echo false )" >> $GITHUB_ENV
+
+    - name: Push tags only
+      if: env.changed == 'true'
+      run: |
+        git push origin "v$(cat package.json | jq -r .version)"
+
+    - name: Create a pull request for develop branch
+      if: env.changed == 'true' && env.type == 'prerelease'
+      uses: peter-evans/create-pull-request@v4
+      with:
+        branch: develop
+        commit-message: "chore(release): ${{ env.NEW_VERSION }}"
+        title: "chore(release): ${{ env.NEW_VERSION }}"
+        body: "Automated release for version ${{ env.NEW_VERSION }}"
+        labels: "automated release"
+
+    - name: Create Release
+      if: env.changed == 'true'
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: "v$(cat package.json | jq -r .version)"
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
