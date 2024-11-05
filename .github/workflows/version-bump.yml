@@ -45,4 +45,4 @@ jobs:
           VERSION=$(jq -r '.version' package.json)
           git add package.json package-lock.json
           git commit -m "Bump version to $VERSION"
-          git push origin HEAD  # Pushes changes back to the PR branch
+          git push origin "HEAD:${{ github.head_ref }}"  # Pushes changes back to the PR branch
