@@ -34,6 +34,9 @@ jobs:
         id: version
         run: |
           VERSION=$(node -p "require('./package.json').version")
+          if [ "${{ github.ref_name }}" == "develop" ]; then
+            VERSION="${VERSION}-develop"
+          fi
           echo "VERSION=$VERSION" >> $GITHUB_ENV
 
       - name: Extract metadata (tags, labels) for Docker
@@ -42,7 +45,7 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository }}
           tags: |
-            ${{ env.VERSION }}${{ github.ref_name == 'develop' && '-develop' || '' }}
+            ${{ env.VERSION }}
             latest
 
       - name: Build and push Docker image
@@ -52,8 +55,8 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}:${{ env.VERSION }}${{ github.ref_name == 'develop' && '-develop' || '' }}
-            ghcr.io/${{ github.repository }}:latest
+            ghcr.io/${{ github.repository }}:${{ env.VERSION }}
+            ${{ github.ref_name == 'main' && 'ghcr.io/${{ github.repository }}:latest' || '' }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
