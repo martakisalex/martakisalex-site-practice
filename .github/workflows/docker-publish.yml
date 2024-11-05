@@ -33,6 +33,10 @@ jobs:
         id: version
         run: |
           VERSION=$(node -p "require('./package.json').version")
+          # Add '-develop' to the version if on the 'develop' branch
+          if [ "${{ github.ref_name }}" == "develop" ]; then
+            VERSION="$VERSION-develop"
+          fi
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "::set-output name=VERSION::$VERSION"
 
