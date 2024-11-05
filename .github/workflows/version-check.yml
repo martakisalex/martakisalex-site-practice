@@ -1,4 +1,4 @@
-name: Version Check
+name: Version Check Test
 
 on:
   pull_request:
