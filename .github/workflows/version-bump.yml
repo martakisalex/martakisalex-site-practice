@@ -61,6 +61,9 @@ jobs:
       - name: Bump Version in package.json
         if: env.SKIP_BUMP == 'false'
         run: |
+          # Fetch the latest changes to ensure the environment is up-to-date
+          git fetch origin "${{ github.head_ref }}"
+
           # Bump the version in package.json based on the bump type
           npm version ${{ env.BUMP_TYPE }} --no-git-tag-version
           VERSION=$(jq -r '.version' package.json)
@@ -69,11 +72,9 @@ jobs:
           git add package.json package-lock.json
           git commit -m "chore: bump version to $VERSION"
           
-          # Pull any remote changes on the PR branch to prevent conflicts
+          # Pull remote changes to prevent conflicts, then push
           git pull origin "${{ github.head_ref }}" --rebase
-          
-          # Push the updated version back to the PR branch
-          git push origin "HEAD:${{ github.head_ref }}"  # Authenticates with GITHUB_TOKEN by default
+          git push origin "HEAD:${{ github.head_ref }}"  # Uses the PR's source branch name
 
       - name: Add Version Bumped Label
         if: env.SKIP_BUMP == 'false'
