@@ -46,17 +46,40 @@ jobs:
           images: ghcr.io/${{ github.repository }}
           tags: |
             ${{ env.VERSION }}
-            latest
 
-      - name: Build and push Docker image
-        id: push
+      - name: Build Docker image without pushing
+        id: build
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: false
+          tags: |
+            ghcr.io/${{ github.repository }}:${{ env.VERSION }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Push Docker image (for main branch only)
+        if: github.ref_name == 'main'
         uses: docker/build-push-action@v4
         with:
           context: .
           push: true
           tags: |
             ghcr.io/${{ github.repository }}:${{ env.VERSION }}
-            ${{ github.ref_name == 'main' && 'ghcr.io/${{ github.repository }}:latest' || '' }}
+            ghcr.io/${{ github.repository }}:latest
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Push Docker image (for develop branch only)
+        if: github.ref_name == 'develop'
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}:${{ env.VERSION }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -66,5 +89,5 @@ jobs:
         uses: actions/attest-build-provenance@v1
         with:
           subject-name: "ghcr.io/${{ github.repository }}:${{ env.VERSION }}"
-          subject-digest: ${{ steps.push.outputs.digest }}
+          subject-digest: ${{ steps.build.outputs.digest }}
           push-to-registry: true
