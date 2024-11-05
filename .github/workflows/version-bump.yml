@@ -41,11 +41,12 @@ jobs:
         if: env.SKIP_BUMP == 'false'
         id: bump_type
         run: |
-          if [[ "${{ github.head_ref }}" == feat:* ]]; then
+          BRANCH_NAME="${{ github.head_ref }}"
+          if [[ "$BRANCH_NAME" == feat/* ]]; then
             echo "BUMP_TYPE=minor" >> $GITHUB_ENV
-          elif [[ "${{ github.head_ref }}" == fix:* ]]; then
+          elif [[ "$BRANCH_NAME" == fix/* ]]; then
             echo "BUMP_TYPE=patch" >> $GITHUB_ENV
-          elif [[ "${{ github.head_ref }}" == major:* ]]; then
+          elif [[ "$BRANCH_NAME" == major/* ]]; then
             echo "BUMP_TYPE=major" >> $GITHUB_ENV
           else
             echo "BUMP_TYPE=patch" >> $GITHUB_ENV # default to patch if no prefix
