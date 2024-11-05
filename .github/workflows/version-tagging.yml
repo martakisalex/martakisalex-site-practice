@@ -1,4 +1,4 @@
-name: Tag on Version Update
+name: Version Tagging
 
 on:
   push:
