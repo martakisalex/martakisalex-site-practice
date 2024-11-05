@@ -1,48 +1,68 @@
-name: Version Bump
+name: Version Bump on Feature Branches
 
 on:
   push:
-    branches:
-      - develop
+    branches-ignore:
       - main
+      - develop
 
 jobs:
-  version-bump:
+  version_bump:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Check out the repository
-      uses: actions/checkout@v2
+      - name: Checkout code
+        uses: actions/checkout@v2
 
-    - name: Set up Node.js
-      uses: actions/setup-node@v2
-      with:
-        node-version: '16'
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '16'
 
-    - name: Install dependencies
-      run: npm install
+      - name: Install dependencies
+        run: npm install
 
-    - name: Configure Git identity
-      run: |
-        git config --global user.name "github-actions[bot]"
-        git config --global user.email "github-actions[bot]@users.noreply.github.com"
-    - name: Determine release type
-      id: version
-      run: echo "::set-output name=type::$(if [ ${{ github.ref }} = 'refs/heads/develop' ]; then echo prerelease; else echo release; fi)"
+      - name: Determine Version Suffix
+        id: version_suffix
+        run: |
+          # Check if merging to develop; if so, add -beta suffix
+          if [[ "${{ github.ref }}" == "refs/heads/develop" ]]; then
+            # Extract the current version number from package.json
+            VERSION=$(jq -r '.version' package.json | sed 's/-beta.*//')
+            # Get latest beta version by counting existing beta tags
+            LATEST_BETA=$(git tag --list "${VERSION}-beta.*" | wc -l)
+            # Increment beta version
+            echo "VERSION_SUFFIX=-beta.$((LATEST_BETA + 1))" >> $GITHUB_ENV
+          else
+            echo "VERSION_SUFFIX=" >> $GITHUB_ENV
+          fi
 
-    - name: Run standard-version for beta (develop branch)
-      if: steps.version.outputs.type == 'prerelease'
-      id: prerelease
-      run: |
-        CURRENT_VERSION=$(node -p "require('./package.json').version")
-        npm run prerelease
-        NEW_VERSION=$(node -p "require('./package.json').version")
-        echo "::set-output name=changed::$( [ \"$CURRENT_VERSION\" != \"$NEW_VERSION\" ] && echo true || echo false )"
-    - name: Run standard-version for release (main branch)
-      if: steps.version.outputs.type == 'release'
-      id: release
-      run: |
-        CURRENT_VERSION=$(node -p "require('./package.json').version")
-        npm run release
-        NEW_VERSION=$(node -p "require('./package.json').version")
-        echo "::set-output name=cha
+      - name: Determine Version Bump Type
+        id: bump_type
+        run: |
+          # Determine version bump type based on branch name
+          if [[ "${GITHUB_REF##*/}" == major:* ]]; then
+            echo "BUMP_TYPE=major" >> $GITHUB_ENV
+          elif [[ "${GITHUB_REF##*/}" == feat:* ]]; then
+            echo "BUMP_TYPE=minor" >> $GITHUB_ENV
+          elif [[ "${GITHUB_REF##*/}" == fix:* ]]; then
+            echo "BUMP_TYPE=patch" >> $GITHUB_ENV
+          else
+            echo "BUMP_TYPE=patch" >> $GITHUB_ENV # default to patch if no specific prefix
+          fi
+
+      - name: Bump Version with Suffix
+        if: startsWith(github.ref, 'refs/heads/feature/')
+        run: |
+          # Apply version bump with beta suffix if defined
+          npm version ${{ env.BUMP_TYPE }} --no-git-tag-version
+          VERSION=$(jq -r '.version' package.json)
+          UPDATED_VERSION="${VERSION}${{ env.VERSION_SUFFIX }}"
+          # Update package.json with the new version
+          jq ".version = \"$UPDATED_VERSION\"" package.json > tmp.$$.json && mv tmp.$$.json package.json
+          git add package.json package-lock.json
+          git commit -m "Bump version to ${UPDATED_VERSION}"
+          git push origin HEAD
+
+      - name: Build and Test
+        run: npm run build && npm test
