@@ -38,15 +38,19 @@ jobs:
             VERSION="${VERSION}-beta"
           fi
           echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "::set-output name=VERSION::$VERSION"
 
       - name: Check for existing Docker tag
         id: docker_tag_check
         run: |
-          if docker manifest inspect ghcr.io/martakisalex/martakisalex-site-practice:${{ steps.version.outputs.VERSION }} > /dev/null 2>&1; then
-            echo "Docker tag already exists. Skipping push."
+          if docker manifest inspect ghcr.io/martakisalex/martakisalex-site-practice:${{ env.VERSION }} > /dev/null 2>&1; then
+            echo "Docker tag already exists for version $VERSION. Skipping push." >> $GITHUB_STEP_SUMMARY
             exit 0
           fi
+        continue-on-error: true
+
+      - name: Notify of skipped container build
+        if: steps.docker_tag_check.outcome == 'failure'
+        run: echo "No new container was created as the Docker tag already exists." >> $GITHUB_STEP_SUMMARY
 
       - name: Build and push Docker image
         if: steps.docker_tag_check.outcome == 'success'
@@ -56,6 +60,6 @@ jobs:
           push: true
           tags: |
             ghcr.io/martakisalex/martakisalex-site-practice:latest
-            ghcr.io/martakisalex/martakisalex-site-practice:${{ steps.version.outputs.VERSION }}
+            ghcr.io/martakisalex/martakisalex-site-practice:${{ env.VERSION }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
