@@ -2,9 +2,8 @@ name: Build and Push Docker Image
 
 on:
   push:
-    branches:
-      - develop
-      - main
+    tags:
+      - 'v*'
 
 jobs:
   build-and-push-image:
@@ -13,7 +12,6 @@ jobs:
     permissions:
       contents: read
       packages: write
-      attestations: write
       id-token: write
 
     steps:
@@ -30,20 +28,11 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract version from package.json
+      - name: Extract version from Git tag
         id: version
         run: |
-          VERSION=$(node -p "require('./package.json').version")
+          VERSION=${GITHUB_REF#refs/tags/v}
           echo "VERSION=$VERSION" >> $GITHUB_ENV
-
-      - name: Extract metadata (tags, labels) for Docker
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/${{ github.repository }}
-          tags: |
-            ${{ env.VERSION }}${{ github.ref_name == 'develop' && '-develop' || '' }}
-            ${{ github.ref_name == 'main' && 'latest' || '' }}
 
       - name: Build and push Docker image
         id: push
@@ -52,16 +41,9 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}:${{ env.VERSION }}${{ github.ref_name == 'develop' && '-develop' || '' }}
-            ${{ github.ref_name == 'main' && 'ghcr.io/${{ github.repository }}:latest' || '' }}
-          labels: ${{ steps.meta.outputs.labels }}
+            ghcr.io/${{ github.repository }}:${{ env.VERSION }}
+            ghcr.io/${{ github.repository }}:latest
+          labels: |
+            org.opencontainers.image.version=${{ env.VERSION }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
-      - name: Generate artifact attestation
-        if: github.ref_name == 'main'
-        uses: actions/attest-build-provenance@v1
-        with:
-          subject-name: "ghcr.io/${{ github.repository }}:${{ env.VERSION }}"
-          subject-digest: ${{ steps.push.outputs.digest }}
-          push-to-registry: true
