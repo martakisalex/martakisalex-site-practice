@@ -22,6 +22,11 @@ jobs:
     - name: Install dependencies
       run: npm install
 
+    - name: Configure Git identity
+      run: |
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
     - name: Determine release type
       id: version
       run: echo "::set-output name=type::$(if [ ${{ github.ref }} = 'refs/heads/develop' ]; then echo prerelease; else echo release; fi)"
