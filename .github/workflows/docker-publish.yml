@@ -40,7 +40,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository }}
+          images: ghcr.io/martakisalex/martakisalex-site-practice
           tags: |
             ${{ env.VERSION }}${{ github.ref_name == 'develop' && '-develop' || '' }}
             latest
@@ -52,8 +52,8 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}:${{ env.VERSION }}${{ github.ref_name == 'develop' && '-develop' || '' }}
-            ghcr.io/${{ github.repository }}:latest
+            ghcr.io/martakisalex/martakisalex-site-practice:latest
+            ghcr.io/martakisalex/martakisalex-site-practice:${{ env.VERSION }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -62,6 +62,6 @@ jobs:
         if: github.ref_name == 'main'
         uses: actions/attest-build-provenance@v1
         with:
-          subject-name: "ghcr.io/${{ github.repository }}:${{ env.VERSION }}"
+          subject-name: "ghcr.io/martakisalex/martakisalex-site-practice:${{ env.VERSION }}"
           subject-digest: ${{ steps.push.outputs.digest }}
           push-to-registry: true
