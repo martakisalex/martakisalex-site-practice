@@ -35,6 +35,10 @@ jobs:
         run: |
           VERSION=$(node -p "require('./package.json').version")
           echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "::set-output name=VERSION::$VERSION"
+
+      - name: Debug Version
+        run: echo "VERSION=$VERSION"
 
       - name: Extract metadata (tags, labels) for Docker
         id: meta
@@ -42,7 +46,7 @@ jobs:
         with:
           images: ghcr.io/martakisalex/martakisalex-site-practice
           tags: |
-            ${{ env.VERSION }}${{ github.ref_name == 'develop' && '-develop' || '' }}
+            ${{ steps.version.outputs.VERSION }}
             latest
 
       - name: Build and push Docker image
@@ -52,8 +56,8 @@ jobs:
           context: .
           push: true
           tags: |
+            ghcr.io/martakisalex/martakisalex-site-practice:${{ steps.version.outputs.VERSION }}
             ghcr.io/martakisalex/martakisalex-site-practice:latest
-            ghcr.io/martakisalex/martakisalex-site-practice:${{ env.VERSION }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -62,6 +66,6 @@ jobs:
         if: github.ref_name == 'main'
         uses: actions/attest-build-provenance@v1
         with:
-          subject-name: "ghcr.io/martakisalex/martakisalex-site-practice:${{ env.VERSION }}"
+          subject-name: "ghcr.io/martakisalex/martakisalex-site-practice:${{ steps.version.outputs.VERSION }}"
           subject-digest: ${{ steps.push.outputs.digest }}
           push-to-registry: true
