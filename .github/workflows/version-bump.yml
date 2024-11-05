@@ -1,7 +1,7 @@
 name: Version Bump
 
 on:
-  push:
+  pull_request:
     branches:
       - develop  # Change this if you want it on a different branch
 
