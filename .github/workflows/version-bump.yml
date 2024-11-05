@@ -34,6 +34,11 @@ jobs:
             echo "BUMP_TYPE=patch" >> $GITHUB_ENV # default to patch if no prefix
           fi
 
+      - name: Configure Git User
+        run: |
+          git config --local user.email "actions@github.com"
+          git config --local user.name "GitHub Actions"
+
       - name: Bump Version in package.json
         run: |
           npm version ${{ env.BUMP_TYPE }} --no-git-tag-version
